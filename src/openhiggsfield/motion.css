@@ -23,6 +23,15 @@
    Nothing here changes a feature, a layout box, a hit target or a timing that
    the studio's own motion depends on. */
 
+/* ---------- the face ---------- */
+
+/* `--font-ui` looks up `--font-ohf-inter`, which used to be set by next/font on
+   the root. The family is now self-hosted (see page.tsx), so the variable is
+   declared here on the class the shell is given. */
+.ohf.ohf-font-inter {
+  --font-ohf-inter: "Inter Variable";
+}
+
 /* ---------- the ground ---------- */
 
 .ohf-field {
