@@ -1,0 +1,413 @@
+/* Motion graphics — the studio's atmosphere layer.
+
+   The studio already animates its *state*: tiles arrive, skeletons sweep, the
+   lamp pulses. What it never had was atmosphere — the surface under the work,
+   which sat as a flat near-black plate through a ten-minute render.
+
+   Everything here is one of three things, and nothing else:
+
+   1. Ground. A slow aurora wash and a drifting dust field behind the gallery,
+      so the near-black plate has depth without competing with the work. Both
+      run on the compositor (transform/opacity only) and are screen-blended
+      well under the point where they would change how a generated image
+      reads. They are decoration by definition, so they are the first thing to
+      go under reduced motion.
+   2. Entrance. A single choreographed curtain on first paint — the ground
+      settles, the instruments drop, the work rises. It runs once, ends in the
+      exact resting state, and every element is visible if JS never lands.
+   3. Response. Pointer-tracked light on the primary action, a specular sweep
+      on the topbar plates, and a card lift that follows the cursor. All of it
+      is additive: with no pointer, or no motion, every surface is already
+      complete.
+
+   Nothing here changes a feature, a layout box, a hit target or a timing that
+   the studio's own motion depends on. */
+
+/* ---------- the ground ---------- */
+
+.ohf-field {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  contain: strict;
+}
+
+/* Aurora: three soft colour wells breathing against each other at different
+   periods, so the field never repeats a beat the eye can catch. Lime is used
+   at a fraction of its state weight — this is light, not accent. */
+.ohf-field-aurora {
+  position: absolute;
+  inset: -25%;
+  background:
+    radial-gradient(42% 38% at 22% 24%, rgba(209, 254, 23, 0.1), transparent 68%),
+    radial-gradient(46% 42% at 78% 18%, rgba(96, 196, 255, 0.09), transparent 70%),
+    radial-gradient(52% 46% at 58% 88%, rgba(186, 120, 255, 0.085), transparent 72%),
+    radial-gradient(38% 34% at 8% 74%, rgba(23, 246, 176, 0.07), transparent 70%);
+  filter: blur(28px) saturate(1.15);
+  opacity: 0.85;
+  mix-blend-mode: screen;
+  animation: ohf-aurora 38s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+@keyframes ohf-aurora {
+  0% {
+    transform: translate3d(-2.5%, -1.5%, 0) scale(1.04) rotate(-1.2deg);
+    opacity: 0.72;
+  }
+  50% {
+    transform: translate3d(1.5%, 2%, 0) scale(1.09) rotate(0.8deg);
+    opacity: 0.92;
+  }
+  100% {
+    transform: translate3d(2.5%, -2%, 0) scale(1.05) rotate(1.4deg);
+    opacity: 0.78;
+  }
+}
+
+/* Dust: a repeating star-field that travels exactly one tile per cycle, so the
+   loop closes on itself with no visible seam — the same rule the skeleton
+   sheen follows. Two layers at different sizes and speeds give parallax. */
+.ohf-field-dust {
+  position: absolute;
+  inset: -50% -50% 0 -50%;
+  height: 200%;
+  background-image:
+    radial-gradient(1.5px 1.5px at 24px 38px, rgba(255, 255, 255, 0.5), transparent 100%),
+    radial-gradient(1.5px 1.5px at 148px 96px, rgba(209, 254, 23, 0.42), transparent 100%),
+    radial-gradient(1px 1px at 88px 168px, rgba(255, 255, 255, 0.38), transparent 100%),
+    radial-gradient(1.2px 1.2px at 196px 22px, rgba(168, 224, 255, 0.42), transparent 100%),
+    radial-gradient(1px 1px at 42px 118px, rgba(255, 255, 255, 0.3), transparent 100%);
+  background-size: 240px 240px;
+  opacity: 0.5;
+  animation: ohf-dust 64s linear infinite;
+  will-change: transform;
+}
+
+.ohf-field-dust--far {
+  background-size: 380px 380px;
+  opacity: 0.24;
+  animation-duration: 108s;
+  animation-direction: reverse;
+  filter: blur(0.3px);
+}
+
+@keyframes ohf-dust {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+  to {
+    /* Exactly one tile of travel: the last frame matches the first. */
+    transform: translate3d(-240px, -240px, 0);
+  }
+}
+
+/* A vignette so the atmosphere never eats the edges of the work, and a hairline
+   horizon that gives the field a floor. */
+.ohf-field-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(120% 90% at 50% 0%, transparent 42%, rgba(6, 8, 8, 0.55) 100%),
+    linear-gradient(to bottom, transparent 78%, rgba(6, 8, 8, 0.35) 100%);
+}
+
+/* The gallery and the dock must sit above the field. Both already have their
+   own stacking context; this only states the order. */
+.ohf-main > :not(.ohf-field) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- the first-paint curtain ---------- */
+
+/* Runs once, on the shell, and never again. Every part of it ends at the
+   resting value — this animates to the layout's own state rather than from a
+   transformed copy of it, so a dropped frame or an interrupted animation
+   cannot leave anything offset. */
+.ohf-curtain .ohf-field-aurora {
+  animation: ohf-curtain-aurora 1.6s var(--ease-slide) both, ohf-aurora 38s 1.6s ease-in-out infinite alternate;
+}
+.ohf-curtain .ohf-field-dust {
+  animation: ohf-curtain-dust 1.9s var(--ease-slide) both, ohf-dust 64s 1.9s linear infinite;
+}
+.ohf-curtain .ohf-field-dust--far {
+  animation: ohf-curtain-dust 2.2s var(--ease-slide) both, ohf-dust 108s 2.2s linear infinite reverse;
+}
+
+@keyframes ohf-curtain-aurora {
+  from {
+    opacity: 0;
+    transform: scale(1.18);
+  }
+  to {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+}
+@keyframes ohf-curtain-dust {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 0.5;
+  }
+}
+
+/* ---------- instruments ---------- */
+
+/* The topbar plate gets a specular sweep, once, as it lands. It is the same
+   light the skeleton uses, borrowed for arrival: one pass of a soft highlight
+   travelling left to right, never looping. `.ohf-bar` is a flex row whose
+   children are the instruments themselves, so the sweep is painted on the plate
+   and clipped by its radius rather than by `overflow: hidden`, which would
+   clip the scope thumb's own travel. */
+.ohf .ohf-bar {
+  /* Only so the arrival sweep has a box to sit in. The plate never carried a
+     positioned pseudo-element before, so this changes no geometry. */
+  position: relative;
+}
+.ohf-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 28%,
+    rgba(255, 255, 255, 0.11) 46%,
+    rgba(209, 254, 23, 0.16) 50%,
+    rgba(255, 255, 255, 0.11) 54%,
+    transparent 72%
+  );
+  transform: translate3d(-130%, 0, 0);
+  opacity: 0;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  border-radius: inherit;
+  z-index: 3;
+}
+.ohf-curtain .ohf-bar::after {
+  animation: ohf-sweep 1.25s var(--ease-slide) 0.18s both;
+}
+@keyframes ohf-sweep {
+  from {
+    transform: translate3d(-130%, 0, 0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  to {
+    transform: translate3d(130%, 0, 0);
+    opacity: 0;
+  }
+}
+
+/* ---------- pointer light ---------- */
+
+/* The Generate button carries a light that follows the cursor across it. The
+   button already owns ::after (its busy sheen lives on a child) and already has
+   `position: relative`, so ::before is the one free layer on it. The light is a
+   `--mx/--my` pair written by a pointer handler; with no pointer the gradient
+   sits at its fallback centre under `opacity: 0` and the button renders exactly
+   as before. */
+.ohf .ohf-generate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    90px 90px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, 0.55),
+    transparent 72%
+  );
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+  pointer-events: none;
+  z-index: 0;
+}
+.ohf .ohf-generate:hover:not(:disabled)::before,
+.ohf .ohf-generate:focus-visible:not(:disabled)::before {
+  opacity: 1;
+}
+/* Keep the button's own contents above the light. */
+.ohf .ohf-generate > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---------- held state ---------- */
+
+/* While a run is in flight the ground itself subtly quickens, so the whole
+   surface reports liveness and not only the lamp. Keyed off a data attribute
+   the shell already knows, so no component needs a new prop. */
+.ohf[data-busy="true"] .ohf-field-aurora {
+  animation-duration: 22s;
+}
+.ohf[data-busy="true"] .ohf-field-dust {
+  animation-duration: 40s;
+}
+
+/* ---------- reduced motion ---------- */
+
+/* Under reduced motion the instruments sit still: the parallax is a few pixels
+   of depth and nothing depends on it being there. */
+
+/* The atmosphere is decoration and goes entirely; the dust field in particular
+   is a repeating drift with nothing to say. Anything that carries state — the
+   lamp, the skeleton, the drain — is left to the studio's own rules below. */
+@media (prefers-reduced-motion: reduce) {
+  .ohf-field-aurora,
+  .ohf-field-dust {
+    animation: none !important;
+    opacity: 0.4;
+  }
+  .ohf-field-dust {
+    display: none;
+  }
+  .ohf-bar::after {
+    display: none;
+  }
+  .ohf-curtain .ohf-field-aurora {
+    animation: none !important;
+    opacity: 0.6;
+    transform: none;
+  }
+  .ohf .ohf-topbar,
+  .ohf .ohf-composer {
+    translate: none;
+  }
+}
+
+/* ---------- one-shot accents ---------- */
+
+/* A value that just changed gets one beat of scale and a bloom of accent.
+   Replayed by class rather than by transition, so a count that lands on the
+   same number twice still reports that it moved. */
+.ohf .ohf-nudge {
+  animation: ohf-nudge 0.5s var(--ease-slide) both;
+}
+@keyframes ohf-nudge {
+  0% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+  28% {
+    transform: scale(1.16);
+    text-shadow: 0 0 14px rgba(209, 254, 23, 0.55);
+    color: var(--accent);
+  }
+  100% {
+    transform: scale(1);
+    text-shadow: none;
+  }
+}
+
+/* The scope pill's thumb already slides. This adds the light that follows it,
+   so switching scope reads as something being carried rather than cut. */
+.ohf .ohf-tabs::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    60% 120% at var(--scope-x, 50%) 50%,
+    rgba(209, 254, 23, 0.14),
+    transparent 70%
+  );
+  transition: background 0.5s var(--ease);
+}
+.ohf .ohf-tabs:has([data-view="assets"][aria-selected="true"]) {
+  --scope-tint: rgba(96, 196, 255, 0.16);
+}
+
+/* A generated result arriving is the studio's one moment of payoff, so it is
+   the one place the atmosphere is allowed to flare: a ring of accent light
+   expands from the tile's edge as the picture lands. Painted on a pseudo
+   element so it costs no layout and leaves the tile's own entrance untouched. */
+.ohf .ohf-tile[data-fresh="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 0 0 rgba(209, 254, 23, 0.55);
+  animation: ohf-bloom 0.9s var(--ease-slide) both;
+}
+@keyframes ohf-bloom {
+  0% {
+    box-shadow: 0 0 0 0 rgba(209, 254, 23, 0.5), 0 0 0 0 rgba(209, 254, 23, 0.2);
+  }
+  55% {
+    box-shadow: 0 0 0 3px rgba(209, 254, 23, 0.34), 0 0 30px 6px rgba(209, 254, 23, 0.16);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(209, 254, 23, 0), 0 0 0 0 rgba(209, 254, 23, 0);
+  }
+}
+
+/* The composer's model mark turns a quarter as the model changes — the smallest
+   possible acknowledgement that the surface under it is now a different one. */
+.ohf .ohf-model-mark[data-swap="true"] {
+  animation: ohf-swap 0.42s var(--ease-slide) both;
+}
+@keyframes ohf-swap {
+  0% {
+    transform: rotate(-12deg) scale(0.9);
+    opacity: 0.4;
+  }
+  60% {
+    transform: rotate(3deg) scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Typing in the prompt: the caret is the studio's, and it is the only looping
+   motion inside the composer. Left alone deliberately. */
+
+@media (prefers-reduced-motion: reduce) {
+  .ohf .ohf-nudge,
+  .ohf .ohf-tile[data-fresh="true"]::after,
+  .ohf .ohf-model-mark[data-swap="true"] {
+    animation: none !important;
+  }
+}
+
+/* ---------- instrument parallax ---------- */
+
+/* The two floating instruments drift apart very slightly as the work moves
+   under them — a handful of pixels over a whole gallery, which is enough for
+   the topbar and the dock to read as being in front of the ground rather than
+   painted onto it. `--ohf-scroll` is a 0..1 position written by the gallery's
+   own scroll handler in the shell; with no scroll it stays 0 and nothing moves.
+
+   Both use `translate` (not `transform`) so they compose with the entrance
+   animations that already own `transform` on these elements. */
+.ohf .ohf-topbar {
+  translate: 0 calc(var(--ohf-scroll, 0) * -3px);
+}
+.ohf .ohf-composer {
+  translate: 0 calc(var(--ohf-scroll, 0) * 4px);
+  transition: translate 0.12s linear;
+}
+
+/* ---------- depth under the floating layers ---------- */
+
+/* The viewer and the key dialog land on the studio, so the studio should lose
+   a little focus behind them rather than sit at full contrast under a flat
+   scrim. One blur and a slight darkening, on the backdrop the dialog already
+   owns — the panel above it is untouched, so text stays exactly as crisp as it
+   was. Blur is not motion, so this holds under reduced motion. */
+.ohf dialog.ohf-viewer::backdrop,
+.ohf dialog:has(.ohf-keys-panel)::backdrop {
+  background: rgba(4, 5, 5, 0.82);
+  backdrop-filter: blur(14px) saturate(0.9);
+  -webkit-backdrop-filter: blur(14px) saturate(0.9);
+}
