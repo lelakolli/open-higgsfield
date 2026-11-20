@@ -17,6 +17,7 @@ import { ArrowUpIcon, CaretDownIcon, CloseIcon, MinusIcon, PlusIcon, WarningIcon
 import { MediaStrip, useMediaTray } from "./media-tray";
 import { ModelIcon, modelIconSrc } from "./model-icon";
 import { ModelPicker } from "./model-picker";
+import { useNudge, usePointerLight } from "./motion";
 import { SettingPill, SettingPopover } from "./settings";
 
 /* Overlay ids: the two fixed panels, or one setting addressed by its catalog
@@ -211,6 +212,10 @@ export function Composer({
   const attachLabel = tray.allFull ? "Change the inputs" : "Add an input";
   const settingKey = overlay?.startsWith(SETTING) ? overlay.slice(SETTING.length) : null;
   const generateLabel = batchValue > 1 ? `Generate ${batchValue} results` : "Generate";
+  /* Light that follows the pointer across the primary action. Purely additive:
+     with no pointer the ::before stays at opacity 0 and the button is exactly
+     the button it was. */
+  const generateRef = usePointerLight<HTMLButtonElement>();
   const generateTip = disabled ? "Write a prompt first" : `${generateLabel} · ${shortcut ?? "⌘↵"}`;
 
   return (
@@ -364,6 +369,7 @@ export function Composer({
 
               <span className="ohf-generate-slot ohf-tip ohf-tip--end" data-tip={generateTip}>
                 <button
+                  ref={generateRef}
                   type="button"
                   className="ohf-generate"
                   disabled={disabled}
@@ -409,6 +415,9 @@ function BatchStepper({
   const last = counts.length - 1;
   const max = counts[last]!;
   const label = `Batch size — ${value} result${value > 1 ? "s" : ""} per press`;
+  /* The number is the only thing that changes here, so it is the only thing
+     that moves: one beat of scale and accent when it lands on a new count. */
+  const valueRef = useNudge<HTMLSpanElement>(value);
 
   const step = (delta: number) => {
     const next = counts[Math.min(last, Math.max(0, index + delta))]!;
@@ -427,6 +436,7 @@ function BatchStepper({
         <MinusIcon size={12} />
       </button>
       <span
+        ref={valueRef}
         className="ohf-batch-value"
         role="spinbutton"
         tabIndex={0}

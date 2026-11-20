@@ -14,6 +14,7 @@ import { useImagePrompt, useVideoPrompt } from "@/generation/stores/prompt";
 import { useSettings } from "@/generation/stores/settings";
 
 import { GRAIN_URI, artFor } from "./artwork";
+import { useCurtain, useScrollDrift } from "./motion";
 import { Composer } from "./composer";
 import { fileNameFor, saveFile } from "./download";
 import { KeyModal } from "./key-modal";
@@ -619,11 +620,31 @@ export function OpenHiggsfieldApp({ fontClassName = "" }: { fontClassName?: stri
     [runs, view],
   );
   const busy = runs.length > 0 || history.some((record) => record.status === "running");
+  /* The atmosphere's one-shot entrance. The ref is on the shell, so the class it
+     adds for the length of the curtain reaches the ground and the instruments
+     without any of them holding state of their own. */
+  const shellRef = useCurtain<HTMLDivElement>();
+  /* Supplies `--ohf-scroll` for the instrument parallax. The gallery it reads is
+     the one the shell already scrolls; nothing new is mounted. */
+  useScrollDrift(galleryRef, shellRef);
 
   return (
-    <div className={`ohf ${fontClassName}`} style={{ "--ohf-grain": GRAIN_URI } as React.CSSProperties}>
-      <div className="ohf-shell">
+    <div
+      className={`ohf ${fontClassName}`}
+      data-busy={busy}
+      style={{ "--ohf-grain": GRAIN_URI } as React.CSSProperties}
+    >
+      <div className="ohf-shell" ref={shellRef}>
         <main className="ohf-main">
+          {/* The ground: an aurora wash and two dust fields, all compositor-only
+              and all behind the work. Purely atmospheric — the gallery, dock and
+              topbar sit above it on their own layers. */}
+          <div className="ohf-field" aria-hidden>
+            <div className="ohf-field-aurora" />
+            <div className="ohf-field-dust ohf-field-dust--far" />
+            <div className="ohf-field-dust" />
+            <div className="ohf-field-vignette" />
+          </div>
           <Topbar
             view={view}
             onView={switchView}
